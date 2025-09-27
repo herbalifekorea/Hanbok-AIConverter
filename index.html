@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>한복 AI 변환 프로그램</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/additional-styles.css">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .preview-container {
+            min-height: 400px;
+            transition: all 0.3s ease;
+        }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .style-card {
+            transition: all 0.3s ease;
+        }
+        .style-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .style-card.selected {
+            border-color: #8B5CF6;
+            background: linear-gradient(135deg, #8B5CF6 0%, #A78BFA 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-pink-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- 헤더 -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">
+                <i class="fas fa-magic text-purple-600 mr-3"></i>
+                한복 AI 변환 프로그램
+            </h1>
+            <p class="text-lg text-gray-600">AI가 당신의 사진을 아름다운 한복 스타일로 변환해드립니다</p>
+        </div>
+
+        <!-- 메인 콘텐츠 -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- 이미지 업로드 섹션 -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                    <i class="fas fa-upload text-blue-500 mr-2"></i>
+                    사진 업로드
+                </h2>
+                
+                <!-- 파일 업로드 영역 -->
+                <div id="dropZone" class="preview-container border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-purple-400 transition-colors">
+                    <div id="uploadPlaceholder">
+                        <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+                        <p class="text-lg text-gray-600 mb-2">클릭하거나 드래그해서 이미지를 업로드하세요</p>
+                        <p class="text-sm text-gray-500">JPG, PNG 파일만 지원됩니다</p>
+                    </div>
+                    <img id="previewImage" class="hidden max-w-full max-h-96 mx-auto rounded-lg shadow-md" alt="미리보기">
+                </div>
+                <input type="file" id="imageInput" class="hidden" accept="image/*">
+                
+                <!-- 업로드된 이미지 정보 -->
+                <div id="imageInfo" class="hidden mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p class="text-sm text-gray-600">
+                        <i class="fas fa-info-circle mr-2"></i>
+                        <span id="fileName"></span> (<span id="fileSize"></span>)
+                    </p>
+                </div>
+            </div>
+
+            <!-- 결과 이미지 섹션 -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                    <i class="fas fa-image text-green-500 mr-2"></i>
+                    변환 결과
+                </h2>
+                
+                <div id="resultContainer" class="preview-container border-2 border-gray-200 rounded-lg p-8 text-center">
+                    <div id="resultPlaceholder">
+                        <i class="fas fa-magic text-6xl text-gray-300 mb-4"></i>
+                        <p class="text-lg text-gray-500">변환된 한복 이미지가 여기에 나타납니다</p>
+                    </div>
+                    
+                    <!-- 로딩 상태 -->
+                    <div id="loadingState" class="hidden">
+                        <i class="fas fa-spinner text-6xl text-purple-500 loading-spinner mb-4"></i>
+                        <p class="text-lg text-purple-600 mb-2">AI가 한복으로 변환 중입니다...</p>
+                        <p class="text-sm text-gray-500">잠시만 기다려주세요 (약 30-60초 소요)</p>
+                        <div class="mt-4">
+                            <div class="bg-gray-200 rounded-full h-2">
+                                <div id="progressBar" class="bg-purple-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 결과 이미지 -->
+                    <div id="resultImageContainer" class="hidden">
+                        <img id="resultImage" class="max-w-full max-h-96 mx-auto rounded-lg shadow-md mb-4" alt="변환된 이미지">
+                        <button id="downloadBtn" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors">
+                            <i class="fas fa-download mr-2"></i>
+                            다운로드
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 한복 스타일 선택 -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                <i class="fas fa-palette text-pink-500 mr-2"></i>
+                한복 스타일 선택
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- 핑크톤 스타일 -->
+                <div class="style-card border-2 border-gray-200 rounded-lg p-6 cursor-pointer" data-style="pink">
+                    <div class="text-center mb-4">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-pink-300 to-pink-500 flex items-center justify-center">
+                            <i class="fas fa-heart text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">핑크톤</h3>
+                        <p class="text-sm text-gray-600 mt-2">산뜻하고 젊은 감각</p>
+                    </div>
+                    <div class="text-sm text-gray-700">
+                        <p>• 파스텔 핑크 치마</p>
+                        <p>• 흰색 저고리</p>
+                        <p>• 은은한 금빛 자수 디테일</p>
+                        <p>• 화사하고 밝은 분위기</p>
+                    </div>
+                </div>
+
+                <!-- 네이비 & 골드 스타일 -->
+                <div class="style-card border-2 border-gray-200 rounded-lg p-6 cursor-pointer" data-style="navy">
+                    <div class="text-center mb-4">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-blue-800 to-yellow-500 flex items-center justify-center">
+                            <i class="fas fa-crown text-white text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">네이비 & 골드</h3>
+                        <p class="text-sm text-gray-600 mt-2">격식 있고 품위 있는 스타일</p>
+                    </div>
+                    <div class="text-sm text-gray-700">
+                        <p>• 남성: 네이비 도포에 금사 문양</p>
+                        <p>• 여성: 짙은 보라·남색 치마</p>
+                        <p>• 금빛 자수</p>
+                        <p>• 웅장하고 고급스러운 분위기</p>
+                    </div>
+                </div>
+
+                <!-- 화이트 & 라벤더 스타일 -->
+                <div class="style-card border-2 border-gray-200 rounded-lg p-6 cursor-pointer" data-style="lavender">
+                    <div class="text-center mb-4">
+                        <div class="w-16 h-16 mx-auto mb-3 rounded-full bg-gradient-to-r from-purple-300 to-white flex items-center justify-center">
+                            <i class="fas fa-star text-purple-600 text-2xl"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold">화이트 & 라벤더</h3>
+                        <p class="text-sm text-gray-600 mt-2">우아하고 세련된 스타일</p>
+                    </div>
+                    <div class="text-sm text-gray-700">
+                        <p>• 여성: 연보라 치마와 흰색 자수 저고리</p>
+                        <p>• 남성: 라이트 그레이 한복</p>
+                        <p>• 은은하고 우아한 분위기</p>
+                        <p>• 화보 촬영용 스타일</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 변환 버튼 -->
+        <div class="text-center">
+            <button id="convertBtn" class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-12 py-4 rounded-xl text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105" disabled>
+                <i class="fas fa-magic mr-3"></i>
+                한복으로 변환하기
+            </button>
+            <p class="text-sm text-gray-500 mt-3">* 이미지와 스타일을 선택한 후 변환할 수 있습니다</p>
+        </div>
+
+        <!-- 푸터 -->
+        <div class="text-center mt-12 pt-8 border-t border-gray-200">
+            <p class="text-gray-500">
+                <i class="fas fa-robot mr-2"></i>
+                Powered by Gemini Nano-Banana AI Model
+            </p>
+        </div>
+    </div>
+
+    <!-- API 키 설정 모달 -->
+    <div id="apiKeyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+            <div class="text-center mb-6">
+                <i class="fas fa-key text-4xl text-purple-600 mb-4"></i>
+                <h3 class="text-2xl font-semibold text-gray-800 mb-2">API 키 설정</h3>
+                <p class="text-gray-600">제미나이 나노바나나 API를 사용하려면 FAL AI API 키가 필요합니다.</p>
+            </div>
+            
+            <div class="mb-6">
+                <label for="apiKeyInput" class="block text-sm font-medium text-gray-700 mb-2">
+                    FAL AI API 키
+                </label>
+                <input 
+                    type="password" 
+                    id="apiKeyInput" 
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="fal_xxxxxxxxxxxxxxxxxx"
+                >
+                <div class="mt-2 text-sm text-gray-500">
+                    <p>• <a href="https://fal.ai/" target="_blank" class="text-purple-600 hover:underline">fal.ai</a>에서 API 키를 받으실 수 있습니다.</p>
+                    <p>• API 키는 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>
+                </div>
+            </div>
+            
+            <div class="flex space-x-3">
+                <button id="cancelApiKey" class="flex-1 px-4 py-3 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors">
+                    취소
+                </button>
+                <button id="saveApiKey" class="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    저장
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 설정 버튼 -->
+    <div class="fixed top-4 right-4 z-40">
+        <button id="settingsBtn" class="bg-white shadow-lg rounded-full p-3 text-gray-600 hover:text-purple-600 transition-colors">
+            <i class="fas fa-cog text-xl"></i>
+        </button>
+    </div>
+
+    <!-- API 상태 표시 -->
+    <div id="apiStatus" class="fixed top-4 left-4 z-40">
+        <div class="bg-red-100 text-red-700 px-4 py-2 rounded-lg shadow-lg flex items-center">
+            <i class="fas fa-exclamation-triangle mr-2"></i>
+            <span>API 키가 설정되지 않음</span>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
